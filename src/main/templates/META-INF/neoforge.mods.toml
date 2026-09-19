@@ -32,10 +32,10 @@ side = "BOTH"
 modId="async"
 type="required"
 ordering="AFTER"
-side="BOTH"
+side="SERVER"
 
 [[dependencies."${mod_id}"]]
 modId="openpartiesandclaims"
 type="required"
 ordering="AFTER"
-side="BOTH"
+side="SERVER"
