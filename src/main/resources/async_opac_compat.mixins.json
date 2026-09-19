@@ -4,6 +4,7 @@
   "package": "dev.tuxebro.async_opac_compat.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "opac.ChunkProtectionMixin",
     "opac.LevelMixin",
     "opac.WitherEntityMixin"
   ],
