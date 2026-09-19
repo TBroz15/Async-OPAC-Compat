@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.tuxebro.async_opac_compat.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "opac.LevelMixin",
+    "opac.WitherEntityMixin"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
