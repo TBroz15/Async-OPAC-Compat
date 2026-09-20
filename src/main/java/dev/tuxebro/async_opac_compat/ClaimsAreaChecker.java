@@ -1,12 +1,15 @@
 package dev.tuxebro.async_opac_compat;
 
-import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2BooleanLinkedOpenHashMap;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import xaero.pac.common.claims.player.IPlayerChunkClaim;
 import xaero.pac.common.claims.player.IPlayerClaimPosList;
 import xaero.pac.common.claims.player.IPlayerDimensionClaims;
@@ -25,9 +28,14 @@ import javax.annotation.Nullable;
 import java.util.HashMap;
 
 //im an insane premature optimizer omg
+@EventBusSubscriber
 public class ClaimsAreaChecker {
-    private static final int MAX_CLAIM_POS_CACHE_CAPACITY = 5_000;
-    private static final HashMap<ResourceKey<Level>, LongLinkedOpenHashSet> cache = new HashMap<>();
+    private static final int TPS = 20;
+    private static final int MAX_CLAIM_POS_CACHE_CAPACITY = 1_000;
+    private static final int MAX_CLEAR_COUNTER_TICK = 30 * TPS;
+
+    private static final HashMap<ResourceKey<Level>, Long2BooleanLinkedOpenHashMap> cache = new HashMap<>();
+    private static int cacheClearingCounter = 0;
 
     public static boolean checkIfEntityIsIn(Level level, Entity entity) {
         if (entity == null) return false;
@@ -41,24 +49,30 @@ public class ClaimsAreaChecker {
 
     public static boolean checkIfEntityIsIn(MinecraftServer server, ResourceKey<Level> dimensionKey, Entity entity) {
         if (!cache.containsKey(dimensionKey))
-            cache.put(dimensionKey, new LongLinkedOpenHashSet(MAX_CLAIM_POS_CACHE_CAPACITY));
-        LongLinkedOpenHashSet claimPosCache = cache.get(dimensionKey);
+            cache.put(dimensionKey, new Long2BooleanLinkedOpenHashMap(MAX_CLAIM_POS_CACHE_CAPACITY));
+        Long2BooleanLinkedOpenHashMap claimPosCache = cache.get(dimensionKey);
+
+        if (cacheClearingCounter > 20)
+            cacheClearingCounter -= 20;
 
         ChunkPos chunkPos = entity.chunkPosition();
         ResourceLocation dimensionLoc = dimensionKey.location();
         long chunkPosPacked = chunkPos.toLong();
+        boolean claimExists;
 
-        boolean isInClaim = claimPosCache.contains(chunkPosPacked);
-        if (isInClaim) return true;
+        boolean isClaimChecked = claimPosCache.containsKey(chunkPosPacked);
+        if (isClaimChecked) {
+            claimExists = claimPosCache.get(chunkPosPacked);
+            return claimExists;
+        }
 
-        isInClaim = checkClaim(server, dimensionLoc, chunkPos);
-        if (!isInClaim) return false;
+        claimExists = checkClaim(server, dimensionLoc, chunkPos);
+        claimPosCache.put(chunkPosPacked, claimExists);
 
-        claimPosCache.add(chunkPosPacked);
         if (claimPosCache.size() - 10 >= MAX_CLAIM_POS_CACHE_CAPACITY)
-            claimPosCache.removeFirstLong();
+            claimPosCache.removeFirstBoolean();
 
-        return true;
+        return claimExists;
     }
 
     private synchronized static boolean checkClaim(MinecraftServer server, ResourceLocation dimensionLoc, ChunkPos chunkPos) {
@@ -78,5 +92,14 @@ public class ClaimsAreaChecker {
         if (serverData == null) return null;
 
         return serverData.getServerClaimsManager();
+    }
+
+    @SubscribeEvent
+    private static void onTick(ServerTickEvent.Post event) {
+        cacheClearingCounter++;
+        if (cacheClearingCounter < MAX_CLEAR_COUNTER_TICK) return;
+
+        cacheClearingCounter = 0;
+        cache.forEach((dimension, claimPosCache) -> claimPosCache.clear());
     }
 }
