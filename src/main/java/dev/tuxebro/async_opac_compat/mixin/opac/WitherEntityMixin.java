@@ -16,7 +16,7 @@ public class WitherEntityMixin {
         var originalValue = original.call(level, entity);
 
         boolean isEntityNearClaim
-                = ClaimsAreaChecker.checkIfEntityNearClaim(level, entity);
+                = ClaimsAreaChecker.checkIfEntityIsIn(level, entity);
         if (!isEntityNearClaim) return originalValue;
 
         return false;

@@ -29,34 +29,32 @@ public class ClaimsAreaChecker {
     private static final int MAX_CLAIM_POS_CACHE_CAPACITY = 5_000;
     private static final HashMap<ResourceKey<Level>, LongLinkedOpenHashSet> cache = new HashMap<>();
 
-    public static boolean checkIfEntityNearClaim(Level level, Entity entity) {
+    public static boolean checkIfEntityIsIn(Level level, Entity entity) {
         if (entity == null) return false;
         if (level.isClientSide) return false;
 
         ResourceKey<Level> dimensionRes = level.dimension();
         MinecraftServer server = entity.getServer();
         if (server == null) return false;
-        return checkIfEntityNearClaim(server, dimensionRes, entity);
+        return checkIfEntityIsIn(server, dimensionRes, entity);
     }
 
-    public static boolean checkIfEntityNearClaim(MinecraftServer server, ResourceKey<Level> dimensionKey, Entity entity) {
+    public static boolean checkIfEntityIsIn(MinecraftServer server, ResourceKey<Level> dimensionKey, Entity entity) {
         if (!cache.containsKey(dimensionKey))
             cache.put(dimensionKey, new LongLinkedOpenHashSet(MAX_CLAIM_POS_CACHE_CAPACITY));
         LongLinkedOpenHashSet claimPosCache = cache.get(dimensionKey);
 
         ChunkPos chunkPos = entity.chunkPosition();
         ResourceLocation dimensionLoc = dimensionKey.location();
+        long chunkPosPacked = chunkPos.toLong();
 
-        boolean isInClaim = ChunkPosChecker.checkNear3x3Area(chunkPos, (x, z) -> {
-            long chunkLong = ChunkPos.asLong(x, z);
-            return claimPosCache.contains(chunkLong);
-        });
+        boolean isInClaim = claimPosCache.contains(chunkPosPacked);
         if (isInClaim) return true;
 
         isInClaim = checkClaim(server, dimensionLoc, chunkPos);
         if (!isInClaim) return false;
 
-        claimPosCache.add(chunkPos.toLong());
+        claimPosCache.add(chunkPosPacked);
         if (claimPosCache.size() - 10 >= MAX_CLAIM_POS_CACHE_CAPACITY)
             claimPosCache.removeFirstLong();
 
@@ -67,39 +65,7 @@ public class ClaimsAreaChecker {
         var claimsManager = getClaimsManager(server);
         if (claimsManager == null) return true;
 
-        return ChunkPosChecker.checkNear3x3Area(chunkPos,
-                (x, z) -> claimsManager.get(dimensionLoc, new ChunkPos(x, z)) != null);
-    }
-
-    private static class ChunkPosChecker {
-        @FunctionalInterface
-        public interface Predicate {
-            boolean matches(int x, int z);
-        }
-
-        private static boolean checkNear3x3Area(ChunkPos chunkPos, ChunkPosChecker.Predicate predicate) {
-            // fast check instead of starting to traverse immediately
-            if (predicate.matches(chunkPos.x, chunkPos.z)) return true;
-
-            final int minX = chunkPos.x - 1;
-            final int minZ = chunkPos.z - 1;
-
-            final int maxX = chunkPos.x + 1;
-            final int maxZ = chunkPos.z + 1;
-
-            int x = minX;
-            int z = minZ;
-
-            while (true) {
-                if (z > maxZ) return false;
-                if (predicate.matches(x, z)) return true;
-
-                if (x >= maxX) {
-                    x = minX;
-                    z++;
-                } else x++;
-            }
-        }
+        return claimsManager.get(dimensionLoc, chunkPos) != null;
     }
 
     // long ass data type holy mucho texto xaero

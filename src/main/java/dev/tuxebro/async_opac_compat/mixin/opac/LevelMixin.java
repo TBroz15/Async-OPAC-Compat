@@ -36,7 +36,7 @@ public abstract class LevelMixin {
         Level level = (Level) (Object) this;
 
         boolean isEntityNearClaim
-                = ClaimsAreaChecker.checkIfEntityNearClaim(level, entity);
+                = ClaimsAreaChecker.checkIfEntityIsIn(level, entity);
 
         if (!isEntityNearClaim) return;
 
