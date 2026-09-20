@@ -47,7 +47,7 @@ public class ClaimsAreaChecker {
         return checkIfEntityIsIn(server, dimensionRes, entity);
     }
 
-    public static boolean checkIfEntityIsIn(MinecraftServer server, ResourceKey<Level> dimensionKey, Entity entity) {
+    public synchronized static boolean checkIfEntityIsIn(MinecraftServer server, ResourceKey<Level> dimensionKey, Entity entity) {
         if (!cache.containsKey(dimensionKey))
             cache.put(dimensionKey, new Long2BooleanLinkedOpenHashMap(MAX_CLAIM_POS_CACHE_CAPACITY));
         Long2BooleanLinkedOpenHashMap claimPosCache = cache.get(dimensionKey);
