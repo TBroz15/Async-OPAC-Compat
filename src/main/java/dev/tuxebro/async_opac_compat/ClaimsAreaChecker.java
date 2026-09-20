@@ -100,6 +100,7 @@ public class ClaimsAreaChecker {
         if (cacheClearingCounter < MAX_CLEAR_COUNTER_TICK) return;
 
         cacheClearingCounter = 0;
+        if (cache.isEmpty()) return;
         cache.forEach((dimension, claimPosCache) -> claimPosCache.clear());
     }
 }
